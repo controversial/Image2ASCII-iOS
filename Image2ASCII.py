@@ -52,7 +52,7 @@ def image2ASCII(im, scale=200, showimage=False):
 		warnings.warn("Image cannot be more than 500 characters wide")
 		scale = 500
 	
-	im = resize(im).convert("L")  # what does 'L'?  Why was 'L' selected?
+	im = resize(im).convert("L")  # Luminosity returns a single brightness value rather than three color values
 	
 	#Begin with an empty string that will be added on to
 	output=''
