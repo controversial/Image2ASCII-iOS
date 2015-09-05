@@ -3,45 +3,10 @@
 import ui, photos, time, console, dialogs, _dialogs
 from io import BytesIO
 from PIL import Image
+
 from Image2ASCII import image2ASCII, RenderASCII
+from ShadowView import ShadowView
 
-class shadowview(ui.View):
-	'''A class for a ui.View that has a shadow behind it.
-
-	This is accomplished by:
-	1. Draw the background
-	2. Redraw with a shadow, but set clipping so only the edge of the shadow
-	shows. This prevents the part of the shadow that's under the background 
-	from showing.
-	
-	'''
-	def draw(self):
-		
-		'1'
-		#Setup path of window shape
-		path = ui.Path.rect(0, 0, self.width-10, self.height-10)
-		
-		#Draw background
-		ui.set_color((0.95,0.95,0.95,0.5))
-		path.fill()
-		
-
-		'2'
-		#Setup mask by creating image
-		from PIL import ImageDraw
-		i = Image.new('RGBA',(520,290), (255,255,255,0))
-		draw = ImageDraw.Draw(i)
-		draw.rectangle((self.width-10, 0, self.width, self.height),fill=(0,0,0,255))
-		draw.rectangle((0, self.height-10, self.width, self.height),fill=(0,0,0,255))
-		
-		#Convert to UI, apply the mask, and draw shadow!
-		i = pil_to_ui(i)
-		i.clip_to_mask()
-		ui.set_color((1,1,1,1))
-		ui.set_shadow("black",-2,-2,10)
-		path.fill()
-	
-		
 def pil_to_ui(img):
 	b = BytesIO()
 	img.save(b, "PNG")
@@ -127,6 +92,7 @@ def main(im):
 	i.image = pil_to_ui(outim)
 	rootView.add_subview(i)
 	
+	close.bring_to_front()
 	
 	view2.remove_subview(ishare)
 	view2.x = 247
@@ -139,7 +105,28 @@ def main(im):
 
 
 rootView = ui.View(frame=(0, 0, 1024, 768))
-view1 = ui.load_view()
+
+
+
+
+#Build view1
+view1 = ui.View(frame=(0, 0, 1024, 768))
+
+pick = ui.Button(frame=(206,293,200,200), name='pickimage')
+pick.image = ui.Image.named('ionicons-image-256')
+pick.action = imagepick
+pick.tint_color = '#b6b6b6'
+
+take = ui.Button(frame=(618,293,200,200), name='takephoto')
+take.image = ui.Image.named('ionicons-camera-256')
+take.action = imagetake
+take.tint_color = '#b6b6b6'
+
+view1.add_subview(take)
+view1.add_subview(pick)
+
+rootView.add_subview(view1)
+
 
 #Build view2
 view2 = ui.load_view('Popup.pyui')
@@ -149,8 +136,13 @@ ishare = view2['ShareImage']
 ishare['colorbox'].autocapitalization_type = ui.AUTOCAPITALIZE_NONE
 tshare = view2['ShareText']
 sc = view2['segcon']
-
 sc.action = segaction
 
-rootView.add_subview(view1)
+
+close = ui.Button(frame=(992,20,24,24))
+close.image = ui.Image.named('ionicons-close-24')
+close.action = lambda sender: sender.superview.close()
+close.tint_color = '#b6b6b6'
+
+rootView.add_subview(close)
 rootView.present('full_screen', hide_title_bar=True)
