@@ -163,7 +163,7 @@
       "enabled" : true,
       "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
       "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
-      "custom_class" : "shadowview",
+      "custom_class" : "ShadowView",
       "flex" : ""
     }
   }
