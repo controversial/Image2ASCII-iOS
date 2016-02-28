@@ -1,144 +1,120 @@
-from bisect import bisect
-import console
 import random
 import time
 import warnings
+import string
 
-import clipboard
-import photos
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont, ImageDraw, ImageStat, ImageEnhance
 
-#Characters grouped into 'visual weight'
-grayscale = (" ",
-             " ",
-             ".,-",
-             "_ivc=!/|\\~",
-             "gjez2]/(YL)t[+T7Vf"
-             "mdK4ZGbNDXY5P*Q",
-             "W8KMA",
-             "$&#%")
 
-#Benchmarks for when to use which character set
-thresholds = (36, 72, 108, 144, 180, 216)
+def _getfont(fontsize):
+    '''Return the ImageFont for the font I'm using'''
+    try:
+        return ImageFont.truetype("DejaVuSansMono", fontsize*4)
+    except IOError:
+        import _font_cache
+        return ImageFont.truetype(_font_cache.get_font_path('DejaVuSansMono'))
+
+
+def visual_weight(char):
+    '''Return the (approximate) visual weight for a character'''
+    font = _getfont(10)
+    # The size of the letter
+    width, height = font.getsize(char)
+    # Render the letter in question onto an image
+    im = Image.new("RGB", (width, height), (255, 255, 255))
+    dr = ImageDraw.Draw(im)
+    dr.text((0, 0), char, (0, 0, 0), font=font)
+    # Mean of image is visual weight
+    stat = ImageStat.Stat(im)
+    lightness = stat.mean[0]
+    # Project the lightness from a scale of 100 to a scale of 255
+    lightness = (255 - lightness) / 100.0 * 255
+    return lightness
+
+
+def gen_charmap(chars=string.printable):
+    '''Generate a character map for all input characters, mapping each character
+    to its visual weight.'''
+    chars = chars.replace("\n", "")
+    charmap = {}
+    for c in chars:
+        weight = visual_weight(c)
+        if weight not in charmap:
+            charmap[weight] = ''
+        charmap[weight] += c
+    return charmap
+
 
 def resize(im, base=200):
-	#Resize so the smaller image dimension is always 200
-	if im.size[0] > im.size[1]:
-		x = im.size[1]
-		y = im.size[0]
-		a = False
-	else:
-		x = im.size[0]
-		y = im.size[1]
-		a = True
-	
-	percent = (base / float(x))
-	size = int((float(y) * float(percent)))
-	if a:
-		return im.resize((base, int(size * 0.5)), Image.ANTIALIAS)
-	else:
-		return im.resize((size, int(base * 0.5)), Image.ANTIALIAS)
+    # Resize so the smaller image dimension is always 200
+    if im.size[0] > im.size[1]:
+        x = im.size[1]
+        y = im.size[0]
+        a = False
+    else:
+        x = im.size[0]
+        y = im.size[1]
+        a = True
+
+    percent = (base/float(x))
+    size = int((float(y)*float(percent)))
+    if a:
+        im = im.resize((base, int(size*0.5)), Image.ANTIALIAS)
+    else:
+        im = im.resize((size, int(base*0.5)), Image.ANTIALIAS)
+    return im
 
 
-def image2ASCII(im, scale=200, showimage=False):
-	if showimage:
-		im.show()
-	#Make sure an image is selected
-	if not im:
-		raise ValueError("No Image Selected")
-	
-	#Make sure the output size is not too big
-	if scale > 500:
-		warnings.warn("Image cannot be more than 500 characters wide")
-		scale = 500
-	
-	im = resize(im).convert("L")  # Luminosity returns a single brightness value rather than three color values
-	
-	#Begin with an empty string that will be added on to
-	output=''
-	#Create the ASCII string by assigning a character
-	#of appropriate weight to each pixel
-	for y in range(im.size[1]):
-		for x in range(im.size[0]):
-			luminosity = 255 - im.getpixel((x, y))
-			row = bisect(thresholds, luminosity)
-			possible_chars = grayscale[row]
-			#output += possible_chars[random.randint(0, len(possible_chars)-1)]
-			output += random.choice(possible_chars)
-		output += '\n'
-	#return  the final string
-	return output
+def image2ASCII(im, scale=200, showimage=False, charmap=gen_charmap()):
+    thresholds = charmap.keys()
+    grayscale = charmap.values()
+
+    if showimage:
+        im.show()
+    # Make sure an image is selected
+    if im is None:
+        raise ValueError("No Image Selected")
+
+    # Make sure the output size is not too big
+    if scale > 500:
+        warnings.warn("Image cannot be more than 500 characters wide")
+        scale = 500
+
+    # Resize the image and convert to grayscale
+    im = resize(im, scale).convert("L")
+    # Optimize the image by increasing contrast.
+    enhancer = ImageEnhance.Contrast(im)
+    im = enhancer.enhance(1.5)
+
+    # Begin with an empty string that will be added on to
+    output = ''
+
+    # Create the ASCII string by assigning a character
+    # of appropriate weight to each pixel
+    for y in range(im.size[1]):
+        for x in range(im.size[0]):
+            luminosity = 255-im.getpixel((x, y))
+            # Closest match for luminosity
+            closestLum = min(thresholds, key=lambda x: abs(x-luminosity))
+            row = thresholds.index(closestLum)
+            possiblechars = grayscale[row]
+            output += possiblechars[random.randint(0, len(possiblechars)-1)]
+        output += '\n'
+
+    # return  the final string
+    return output
 
 
 def RenderASCII(text, fontsize=5, bgcolor='#EDEDED'):
-	'''Create an image of the ASCII text'''
+    '''Create an image of ASCII text'''
+    linelist = text.split('\n')
+    font = _getfont(fontsize)
+    width, height = font.getsize(linelist[1])
 
-	linelist=text.split('\n')
-	try:
-		font = ImageFont.truetype("DejaVuSansMono", fontsize * 4)
-	except:
-		import _font_cache
-		font = ImageFont.truetype(_font_cache.get_font_path('DejaVuSansMono'))
-	width, height = font.getsize(linelist[1])
-	
-	image = Image.new("RGB", (width, height * len(linelist)), bgcolor)
-	draw = ImageDraw.Draw(image)
-	
-	for i, line in enumerate(linelist):
-		draw.text((0, i * height), line, (0, 0, 0), font=font)
-	return image
+    image = Image.new("RGB", (width, height*len(linelist)), bgcolor)
+    draw = ImageDraw.Draw(image)
 
-
-def stitchImages(im1,im2):
-	'''Takes 2 PIL Images and returns a new image that 
-	appends the two images side-by-side. '''
-	
-	im2 = im2.resize((im2.size[0]/2, im2.size[1]/2), Image.ANTIALIAS)
-	im1 = im1.resize(im2.size, Image.ANTIALIAS)
-	
-	#store the dimensions of each variable
-	w1, h1 = im1.size
-	w2, h2 = im2.size
-	
-	#Take the combined width of both images, and the greater height
-	width = w1 + w2
-	height = max(h1, h2)
-	
-	im = Image.new("RGB", (width, height), "white")
-	im.paste(im1, (0, 0))
-	im.paste(im2, (w1, 0))
-	
-	return im
-
-
-if __name__ == "__main__":
-	while 1:
-		#Ask the user to either take a photo or choose an existing one
-		capture = console.alert("Image2ASCII", button1="Take Photo", button2="Pick Photo")
-	
-		if capture == 1:
-			im = photos.capture_image()
-		elif capture == 2:
-			im = photos.pick_image(original=False)
-		
-		console.show_activity()
-	
-		out = image2ASCII(im, 200)
-		outim = RenderASCII(out, bgcolor = '#ff0000')
-		stitchImages(im, outim).show()
-	
-		console.hide_activity()
-		
-		outim.save('image.jpg')
-		console.quicklook('image.jpg')
-		
-		mode = console.alert("Image2ASCII", "You can either:", "Share Text", "Share Image")
-		if mode == 1:
-			with open('output.txt', 'w') as out_file:
-				out_file.write(out)
-			console.open_in('output.txt')
-		elif mode == 2:
-			console.open_in('image.jpg')
-		
-		time.sleep(5)
-		console.clear()
+    for x in range(len(linelist)):
+        line = linelist[x]
+        draw.text((0, x*height), line, (0, 0, 0), font=font)
+    return image
