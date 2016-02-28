@@ -35,7 +35,8 @@ def visual_weight(char):
 def gen_charmap(chars=string.printable):
     '''Generate a character map for all input characters, mapping each character
     to its visual weight.'''
-    chars = chars.replace("\n", "")
+    # Use the translate method with only the second `deletechars` param.
+    chars = chars.translate(None, "\n\r\t")
     charmap = {}
     for c in chars:
         weight = visual_weight(c)
