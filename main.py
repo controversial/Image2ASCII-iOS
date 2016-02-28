@@ -2,7 +2,7 @@
 
 import ui, photos, time, console, dialogs, _dialogs
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageColor
 
 from Image2ASCII import image2ASCII, RenderASCII
 from ShadowView import ShadowView
@@ -53,10 +53,7 @@ def exporti(sender):
 	color = ishare['colorbox'].text
 	
 	if color != '':
-		if not color.startswith('#'):
-			color = '#'+color
-		if len(color) != 7:
-			raise ValueError('Must be hexidecimal')
+		color = getrgb(color) # Get RGB for color
 		im = RenderASCII(out, bgcolor=color)
 		i.image = pil_to_ui(im)
 		rootView.background_color = color
