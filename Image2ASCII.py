@@ -2,6 +2,7 @@ import random
 import time
 import warnings
 import string
+import console
 
 from PIL import Image, ImageFont, ImageDraw, ImageStat, ImageEnhance
 
@@ -75,7 +76,7 @@ def image2ASCII(im, scale=200, showimage=False, charmap=gen_charmap()):
     # Make sure an image is selected
     if im is None:
         raise ValueError("No Image Selected")
-
+    console.show_activity('Working...')
     # Make sure the output size is not too big
     if scale > 500:
         warnings.warn("Image cannot be more than 500 characters wide")
@@ -103,6 +104,7 @@ def image2ASCII(im, scale=200, showimage=False, charmap=gen_charmap()):
         output += '\n'
 
     # return  the final string
+    console.hide_activity()
     return output
 
 
