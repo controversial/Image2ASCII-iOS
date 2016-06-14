@@ -1,3 +1,5 @@
+**NOTE: this is *not* the core application. `Image2ASCII` lives [here](https://github.com/controversial/Image2ASCII). This is merely a thin `ui` on top of it to make it nicer in Pythonista.**
+
 # Image2ASCII-iOS
 An iOS app for converting images to ASCII art. Designed to be run from pythonista.
 
