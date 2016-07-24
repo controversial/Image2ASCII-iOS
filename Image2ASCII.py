@@ -36,7 +36,7 @@ def gen_charmap(chars=string.printable):
     '''Generate a character map for all input characters, mapping each character
     to its visual weight.'''
     # Use the translate method with only the second `deletechars` param.
-    chars = chars.translate(None, "\n\r\t")
+    chars = chars.replace("\n", "").replace("\r", "").replace("\t", "")
     charmap = {}
     for c in chars:
         weight = visual_weight(c)
@@ -67,8 +67,8 @@ def resize(im, base=200):
 
 
 def image2ASCII(im, scale=200, showimage=False, charmap=gen_charmap()):
-    thresholds = charmap.keys()
-    grayscale = charmap.values()
+    thresholds = list(charmap.keys())
+    grayscale = list(charmap.values())
 
     if showimage:
         im.show()
